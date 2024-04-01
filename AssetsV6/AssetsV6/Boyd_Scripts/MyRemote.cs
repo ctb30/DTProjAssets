@@ -1,0 +1,213 @@
+//MyRemote.cs
+//Courtney Boyd, Virginia State University 
+//Digital Twin Project Last Updated March 27 Spring 2024
+
+//ARM AS OUTPUT
+//This script allows the user to controll the robots
+//using input from the remotes
+
+//Pressing Left Menu button enables Output Mode 
+//Pressing Right Menu button enables Input Mode 
+
+//Pressing Y will increase the position value of servo 6
+//Pressing X will decrease the position value of servo 6
+//Pressing B will increase the position value of servo 5 
+//Pressing A will decrease the position value of servo 5
+
+//Pressing left grip button decrease the position value of servo 4
+//Pressing left Trigger button increase the position value of servo 4
+//Pressing right grip button decreases the position value of servo 3
+//Pressing right trigger button increases the position value of servo 3
+
+using System;
+using System.Diagnostics;
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.UI;
+using System.IO;
+using System.ComponentModel.Design.Serialization;
+
+public class MyRemote : MonoBehaviour
+{
+    public int Servo6Position, Servo5Position, Servo4Position, Servo3Position; 
+    public string pythonCode ; 
+
+    public bool isModeOn; 
+    public string pythonScriptPath = "D:/DigitalTwinProject_2024Boyd/DTProjExternals/PythonControllers/Output_PythonController.py";
+    //WARNING: The path is hard coded this will need to be changed 
+    public Process process = new Process();
+
+    [SerializeField ]Animator ClawAnimator;
+    [SerializeField] GameObject[] Robotic_obj;
+    public Text DummyText; //debug tool
+    void Start()
+    {
+        isModeOn = false; 
+        Servo6Position = 540; 
+        Servo5Position = 360; 
+        Servo4Position = 360; 
+        Servo3Position = 360;  
+
+    }
+    void Update()
+    {
+        
+    }
+
+
+    void StartExecuteMyPythonScript(string myScriptPath){
+        process.StartInfo.FileName = "python";
+        process.StartInfo.Arguments = $"{myScriptPath}";
+        process.StartInfo.RedirectStandardOutput = true;
+        process.StartInfo.UseShellExecute = false;
+        process.StartInfo.CreateNoWindow = true;
+    }
+    void EndExecuteMyPythonScript(string myScriptPath){
+        process.Start();
+        string output = process.StandardOutput.ReadToEnd();
+        Console.WriteLine(output);
+        process.WaitForExit();
+    }
+
+    public void ArmAsOutputClicked(){
+        XRControllerInput.leftprimaryButtonPressed += XPressed; 
+        XRControllerInput.leftsecondaryButtonPressed += YPressed; 
+
+        XRControllerInput.rightprimaryButtonPressed += APressed; 
+        XRControllerInput.rightsecondaryButtonPressed += BPressed;
+
+        XRControllerInput.leftGripButtonPressed += LeftGripPressed; 
+        XRControllerInput.leftTriggerPressed += LeftTriggerPressed; 
+
+        XRControllerInput.rightGripButtonPressed += RightGripPressed; 
+        XRControllerInput.rightTriggerPressed += RightTriggerPressed; 
+
+        XRControllerInput.leftMenuButtonPressed += MenuPressed; 
+
+        pythonCode =  @"
+import xarm 
+arm = xarm.Controller('USB') # Connects the xarm through the USB 
+            ";
+        StartExecuteMyPythonScript(pythonScriptPath); 
+    }
+
+    public void MenuPressed(){
+        isModeOn = !isModeOn; 
+        DummyText.text = isModeOn.ToString();
+        
+    }
+    public void XPressed(){ //INCREASE SERVO 6 POSITION VALUE
+
+    if(isModeOn == true){
+        Servo6Position = Servo6Position + 10;
+        DummyText.text = "XPressed"; //Debug Tool
+        Robotic_obj[4].transform.localRotation = Quaternion.Euler(0, Servo6Position, 0 ); 
+                    
+       int Servo6PhysicalPosition = (Servo6Position*-4)+2660; // Conversion from Virtual Position to Physical Position for Servo 6 - Determined with Slope Intercept Equation 
+       string S6WritablePosition= Servo6PhysicalPosition.ToString(); 
+       string servoLine = "\narm.setPosition(6," +S6WritablePosition+","+"2000,True)\n";
+       string myCommands = pythonCode + servoLine; 
+       File.WriteAllText(pythonScriptPath,myCommands);
+       EndExecuteMyPythonScript(pythonScriptPath);
+        }
+    }
+    public void YPressed(){ //Decrease Servo 6 POSITION VALUE
+    if(isModeOn == true){
+        DummyText.text = "YPressed";//Debug Tool
+        Servo6Position = Servo6Position - 10;
+        Robotic_obj[4].transform.localRotation = Quaternion.Euler(0, Servo6Position, 0 ); 
+                    
+       int Servo6PhysicalPosition = (Servo6Position*-4)+2660; // Conversion from Virtual Position to Physical Position for Servo 6 - Determined with Slope Intercept Equation 
+       string S6WritablePosition= Servo6PhysicalPosition.ToString(); 
+       string servoLine = "\narm.setPosition(6," +S6WritablePosition+","+"2000,True)\n";
+       string myCommands = pythonCode + servoLine; 
+       File.WriteAllText(pythonScriptPath,myCommands);
+       EndExecuteMyPythonScript(pythonScriptPath);
+       }
+    }
+    public void BPressed(){ //INCREASE SERVO 5 POSITION VALUE 
+    if(isModeOn == true){
+        Servo5Position = Servo5Position +10; 
+        DummyText.text = "BPressed";//Debug Tool
+        Robotic_obj[3].transform.localRotation = Quaternion.Euler(0,0, Servo5Position ); 
+                    //Arm_As_Default_Text.text = "I MADE IT CASE 3UP!"; //Debug Tool 
+        int S5PhysicalPosition = (Servo5Position*4)-930; // Conversion from Virtual Position to Physical Position for Servo 5 - Determined with Slope Intercept Equation 
+        string S5WritablePosition = S5PhysicalPosition.ToString(); 
+        string servoLine = "\narm.setPosition(5," +S5WritablePosition+","+"2000,True)\n";
+        string myCommands = pythonCode + servoLine; 
+        File.WriteAllText(pythonScriptPath,myCommands);
+        EndExecuteMyPythonScript(pythonScriptPath);
+    }
+    }
+    public void APressed(){ //DECREASE SERVO 6 POSITION VALUE
+    if(isModeOn == true){
+        DummyText.text = "APressed";//Debug Tool
+        Servo5Position = Servo5Position - 10; 
+        Robotic_obj[3].transform.localRotation = Quaternion.Euler(0,0, Servo5Position ); 
+                    //Arm_As_Default_Text.text = "I MADE IT CASE 3UP!"; //Debug Tool 
+        int S5PhysicalPosition = (Servo5Position*4)-930; // Conversion from Virtual Position to Physical Position for Servo 5 - Determined with Slope Intercept Equation 
+        string S5WritablePosition = S5PhysicalPosition.ToString(); 
+        string servoLine = "\narm.setPosition(5," +S5WritablePosition+","+"2000,True)\n";
+        string myCommands = pythonCode + servoLine; 
+        File.WriteAllText(pythonScriptPath,myCommands);
+        EndExecuteMyPythonScript(pythonScriptPath);
+    }
+    }
+
+    public void LeftGripPressed(){ // INCREASE SERVO 4 POSITION VALUE
+    if(isModeOn == true){
+        Servo4Position = Servo4Position + 10; 
+        DummyText.text = "LeftGripPressed";//Debug Tool
+        Robotic_obj[2].transform.localRotation = Quaternion.Euler(0,0, Servo4Position ); 
+        int S4PhysicalPosition = (Servo4Position*-4)+1930; 
+        string S4WritablePosition = S4PhysicalPosition.ToString(); 
+        string servoLine = "\narm.setPosition(4," + S4WritablePosition +","+"2000,True)\n";
+        string myCommands = pythonCode + servoLine; 
+        File.WriteAllText(pythonScriptPath,myCommands);
+        EndExecuteMyPythonScript(pythonScriptPath);
+    }
+    }
+
+    public void LeftTriggerPressed(){ //Decrease servo 4 position value 
+    if(isModeOn == true){
+        DummyText.text = "LeftTriggerPressed";//Debug Tool
+        Servo4Position = Servo4Position - 10; 
+        Robotic_obj[2].transform.localRotation = Quaternion.Euler(0,0, Servo4Position ); 
+        int S4PhysicalPosition = (Servo4Position*-4)+1930;
+        string S4WritablePosition = S4PhysicalPosition.ToString(); 
+        string servoLine = "\narm.setPosition(4," + S4WritablePosition +","+"2000,True)\n";
+        string myCommands = pythonCode + servoLine; 
+        File.WriteAllText(pythonScriptPath,myCommands);
+        EndExecuteMyPythonScript(pythonScriptPath);
+    }
+    }
+
+    public void RightGripPressed(){ //increase servo 3 position value 
+    if(isModeOn == true){
+        Servo3Position = Servo3Position + 10; 
+        DummyText.text = "RightGripPressed"; //Debug Tool
+        Robotic_obj[1].transform.localRotation = Quaternion.Euler(0,0, Servo3Position ); 
+        int S3PhysicalPosition = (Servo3Position*4)-930; // Conversion from Virtual Position to Physical Position for Servo 6 - Determined with Slope Intercept Equation 
+        string S3WritablePosition = S3PhysicalPosition.ToString(); 
+        string servoLine = "\narm.setPosition(3," +S3WritablePosition+","+"2000,True)\n";
+        string myCommands = pythonCode + servoLine; 
+        File.WriteAllText(pythonScriptPath,myCommands);
+        EndExecuteMyPythonScript(pythonScriptPath);
+    }
+    }
+
+    public void RightTriggerPressed(){ //decrease servo 3 position value 
+    if(isModeOn == true){
+        DummyText.text = "RightTriggerPressed"; //Debug Tool
+        Servo3Position = Servo3Position -10; 
+        Robotic_obj[1].transform.localRotation = Quaternion.Euler(0,0, Servo3Position ); 
+        int S3PhysicalPosition = (Servo3Position*4)-930; // Conversion from Virtual Position to Physical Position for Servo 6 - Determined with Slope Intercept Equation 
+        string S3WritablePosition = S3PhysicalPosition.ToString(); 
+        string servoLine = "\narm.setPosition(3," +S3WritablePosition+","+"2000,True)\n";
+        string myCommands = pythonCode + servoLine; 
+        File.WriteAllText(pythonScriptPath,myCommands);
+        EndExecuteMyPythonScript(pythonScriptPath);
+    }
+    }
+}
